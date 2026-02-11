@@ -52,6 +52,30 @@ class FeatureEngineer:
         df[f'MACD_Hist_{signal}'] = macd - signal_line
         return df
 
+    def add_volatility_asymmetry(self, df: pd.DataFrame, price_col: str = 'Close', window: int = 10, sigma: float = 3.0) -> pd.DataFrame:
+        """
+        Detects Asymmetric Volatility opportunities (User-requested Signal).
+        Logic: If current return > 3 * Rolling Volatility, flag as 1.
+        """
+        df = df.copy()
+        # Ensure we have returns; if not calculated yet, do it temporarily
+        if 'Pct_Return' not in df.columns:
+            # We use Pct_Change for this specific logic as per request (or convert log returns)
+            # User code: data['returns'] = data['price'].pct_change()
+            returns = df[price_col].pct_change()
+        else:
+            returns = df['Pct_Return']
+            
+        # User Code: data['volatility'] = data['returns'].rolling(window=10).std()
+        volatility = returns.rolling(window=window).std()
+        
+        # User Code: data['is_asymmetric'] = np.where(data['returns'].abs() > 3 * data['volatility'], 1, 0)
+        # We handle NaN at start
+        is_asymmetric = np.where(returns.abs() > (sigma * volatility), 1.0, 0.0)
+        
+        df[f'Vol_Asymmetry_{window}'] = is_asymmetric
+        return df
+
     def clean_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Drops NaN values created by rolling windows.

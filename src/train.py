@@ -49,6 +49,7 @@ def main():
         sub_df = fe.calculate_returns(sub_df)
         sub_df = fe.add_rsi(sub_df)
         sub_df = fe.add_macd(sub_df)
+        sub_df = fe.add_volatility_asymmetry(sub_df, window=10) # [NEW] Asymmetry Signal
         processed_dfs.append(sub_df)
     
     df_features = pd.concat(processed_dfs).sort_values('Date')
@@ -70,14 +71,14 @@ def main():
     # We explicitly check if 'Close' predicts 'Target'. 
     # Since Target is derived from Next Close, current Close shouldn't "leak" perfectly 
     # but high correlation might be suspicious if we normalized wrong.
-    auditor.check_lookahead(features=['RSI_14', 'MACD_12_26', 'Log_Return'], target='Target')
+    auditor.check_lookahead(features=['RSI_14', 'MACD_12_26', 'Log_Return', 'Vol_Asymmetry_10'], target='Target')
     
     # 4. Prepare Tensors for GNN
     print("\n[4] Preparing Tensors...")
     tickers = df_features['Ticker'].unique()
     n_nodes = len(tickers)
-    n_features = 4 # Log_Return, RSI, MACD, Signal
-    feature_cols = ['Log_Return', 'RSI_14', 'MACD_12_26', 'MACD_Signal_9']
+    n_features = 5 # Log_Return, RSI, MACD, Signal, Asymmetry
+    feature_cols = ['Log_Return', 'RSI_14', 'MACD_12_26', 'MACD_Signal_9', 'Vol_Asymmetry_10']
     
     # For this demo, we take a single "snapshot" (batch_size=1) of the latest T time steps
     T = 10 # Lookback window
@@ -107,7 +108,7 @@ def main():
     
     # 5. Model Training
     print("\n[5] Training GNN...")
-    model = ST_GNN(n_features=4, n_hidden=16, n_classes=1, dropout=0.2)
+    model = ST_GNN(n_features=5, n_hidden=16, n_classes=1, dropout=0.2)
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     criterion = nn.MSELoss()
     
