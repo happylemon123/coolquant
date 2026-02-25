@@ -35,13 +35,14 @@ Built as a Python package, not a notebook.
 
 ## Usage
 
-### 1. Run Pipeline
+### 1. Market Data & Visualization Engine
+To see the Kalman Filter and GARCH(1,1) model in action on live market data (default: `$AAPL`), run the strategy visualizer. This will download real-time data via `yfinance` and generate an interactive `interactive_dashboard.html` using Plotly.
 ```bash
-python3 src/train.py
+python3 src/model/optiver_strategy.py
 ```
-This script runs the `LeakageAuditor` first. If the audit fails, training is aborted.
+*(Open `interactive_dashboard.html` in your browser to interact with the models.)*
 
-### 2. Model Training
+### 2. Graph Neural Network Pipeline
 (Coming Soon: Implementation of the ST-GNN trainer)
 
 ## License
