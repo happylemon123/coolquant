@@ -10,10 +10,18 @@ Academic models often fail in production due to "Look-ahead Bias".
 *   **Module**: `src.audit.leakage.LeakageAuditor`
 *   **Function**: Runs statistical tests (correlation checks, timestamp verification) to prove input features at $t$ contain zero information from $t+k$.
 
-### 2. Transaction Cost & Volatility Modeling
-Real-world alpha vanishes after costs. CoolQuant models dynamic market conditions rather than assuming friction-less environments.
-*   **Module**: `src.model.cost.CostModel` (Simulates Bid-Ask spread limits and slippage)
-*   **Module**: `src.model.optiver_strategy.py` (Applies GARCH(1,1) for conditional volatility clustering and Kalman Filters for true price trend discovery.)
+### 2. Time-Series Volatility & Latency-Free Trend Discovery
+Real-world alpha vanishes after costs, and high-frequency strategies are immediately penalized by poorly estimated volatility and lagged trend indicators. CoolQuant natively integrates two advanced statistical models to handle dynamic market conditions:
+
+#### A. The Kalman Filter (Adaptive Price Discovery)
+Standard Moving Averages (SMA/EMA) introduce unacceptable latency during regime changes. The **Kalman Filter** is implemented to dynamically estimate the "true" unobservable price.
+*   **Mechanism**: It operates in a state-space formulation, continuously weighing the *certainty* of its current state prediction against the *noise* of new price observations. 
+*   **Advantage**: By separating structural signal from random walk noise, it achieves latency-free trend discovery, allowing the model to react to true price reversals faster than lagging indicators.
+
+#### B. The GARCH(1,1) Model (Conditional Volatility Clustering)
+Unlike historical volatility (which is backward-looking and slow) or implied volatility (which requires options data), CoolQuant utilizes a **Generalized Autoregressive Conditional Heteroskedasticity (GARCH)** model.
+*   **Mechanism**: Financial markets exhibit "Volatility Clustering"—large shocks are followed by large shocks. GARCH explicitly models this time-varying variance.
+*   **Advantage**: When a market shock occurs, the GARCH conditional volatility spikes *immediately*. This allows downstream risk models to widen simulated bid-ask spreads instantly, protecting the portfolio from adverse selection during flash crashes.
 
 ### 3. Risk Governance
 Strategies must survive "blow-up" events.
