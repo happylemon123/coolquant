@@ -10,10 +10,10 @@ Academic models often fail in production due to "Look-ahead Bias".
 *   **Module**: `src.audit.leakage.LeakageAuditor`
 *   **Function**: Runs statistical tests (correlation checks, timestamp verification) to prove input features at $t$ contain zero information from $t+k$.
 
-### 2. Transaction Cost Modeling
-Real-world alpha vanishes after costs. CoolQuant doesn't assume friction-less markets.
-*   **Module**: `src.model.cost.CostModel`
-*   **Function**: Simulates Bid-Ask spread limits and non-linear market impact (slippage) to penalize high-turnover strategies.
+### 2. Transaction Cost & Volatility Modeling
+Real-world alpha vanishes after costs. CoolQuant models dynamic market conditions rather than assuming friction-less environments.
+*   **Module**: `src.model.cost.CostModel` (Simulates Bid-Ask spread limits and slippage)
+*   **Module**: `src.model.optiver_strategy.py` (Applies GARCH(1,1) for conditional volatility clustering and Kalman Filters for true price trend discovery.)
 
 ### 3. Risk Governance
 Strategies must survive "blow-up" events.
