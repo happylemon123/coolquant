@@ -53,24 +53,57 @@ def apply_garch_volatility(returns):
 def create_interactive_dashboard(prices, kalman_trend, garch_vol, ticker="AAPL"):
     """Creates a beautiful, interactive HTML dashboard using Plotly."""
     
+    # Calculate Trend Direction based on the Kalman Derivative
+    trend_diff = kalman_trend.diff()
+    trend_state = np.where(trend_diff > 0, "Uptrend 🟢", "Downtrend 🔴")
+    
+    # Identify Reversal Points (where trend changes)
+    # Shift the boolean series to find where current state != previous state
+    is_uptrend = trend_diff > 0
+    reversals = is_uptrend != is_uptrend.shift(1)
+    # Ignore the first few NaN rows
+    reversals.iloc[0:2] = False 
+    
+    bullish_reversals = kalman_trend[reversals & is_uptrend]
+    bearish_reversals = kalman_trend[reversals & ~is_uptrend]
+
     fig = make_subplots(rows=2, cols=1, 
                         shared_xaxes=True, 
                         vertical_spacing=0.1,
                         row_heights=[0.7, 0.3],
                         subplot_titles=(f"{ticker} Price vs Kalman True Trend", "GARCH(1,1) Conditional Volatility"))
 
-    # Top Plot: Prices (Scatter instead of candlestick for simplicity of continuous line integration)
+    # Top Plot: Prices
     fig.add_trace(go.Scatter(x=prices.index, y=prices, 
                              name="Market Price", 
                              mode='lines',
-                             line=dict(color='rgba(150, 150, 150, 0.7)', width=1.5)), 
+                             line=dict(color='rgba(150, 150, 150, 0.5)', width=1.5),
+                             hovertemplate='Date: %{x}<br>Price: %{y:.2f}<extra></extra>'), 
                   row=1, col=1)
 
-    # Top Plot: Kalman Trend
+    # Top Plot: Kalman Trend (with custom trend hover text)
     fig.add_trace(go.Scatter(x=kalman_trend.index, y=kalman_trend, 
                              name="Kalman Trend", 
                              mode='lines',
-                             line=dict(color='#00F0FF', width=3)), 
+                             line=dict(color='#00F0FF', width=3),
+                             customdata=trend_state,
+                             hovertemplate='Date: %{x}<br>Kalman: %{y:.2f}<br>State: %{customdata}<extra></extra>'), 
+                  row=1, col=1)
+
+    # Top Plot: Bullish Reversal Markers
+    fig.add_trace(go.Scatter(x=bullish_reversals.index, y=bullish_reversals,
+                             name="Trend Up Indicator",
+                             mode='markers',
+                             marker=dict(symbol='triangle-up', size=12, color='#00FF00', line=dict(width=1, color='white')),
+                             hovertemplate='<b>Bullish Reversal!</b><br>Trend changing to UP<extra></extra>'),
+                  row=1, col=1)
+
+    # Top Plot: Bearish Reversal Markers
+    fig.add_trace(go.Scatter(x=bearish_reversals.index, y=bearish_reversals,
+                             name="Trend Down Indicator",
+                             mode='markers',
+                             marker=dict(symbol='triangle-down', size=12, color='#FF0000', line=dict(width=1, color='white')),
+                             hovertemplate='<b>Bearish Reversal!</b><br>Trend changing to DOWN<extra></extra>'),
                   row=1, col=1)
 
     # Bottom Plot: GARCH Volatility
@@ -78,7 +111,8 @@ def create_interactive_dashboard(prices, kalman_trend, garch_vol, ticker="AAPL")
                              name="Conditional Volatility", 
                              mode='lines',
                              fill='tozeroy',
-                             line=dict(color='#FF003C', width=2)), 
+                             line=dict(color='#FF003C', width=2),
+                             hovertemplate='Date: %{x}<br>Volatility: %{y:.4f}<extra></extra>'), 
                   row=2, col=1)
 
     # Layout Aesthetics
@@ -116,10 +150,18 @@ if __name__ == "__main__":
     # GARCH needs aligned indices, which are 1 less than prices due to pct_change
     garch_vol = apply_garch_volatility(returns)
     
-    # 4. Visualization
-    create_interactive_dashboard(prices.iloc[1:], kalman_trend.iloc[1:], garch_vol, ticker)
+    # align slices
+    p_slice = prices.iloc[1:]
+    k_slice = kalman_trend.iloc[1:]
     
+    # 4. Visualization
+    create_interactive_dashboard(p_slice, k_slice, garch_vol, ticker)
+    
+    # Calculate final trend
+    final_trend = "UP" if k_slice.iloc[-1] > k_slice.iloc[-2] else "DOWN"
+
     print("\n--- Final Model Stats ---")
-    print(f"Latest Price ($): {prices.iloc[-1]:.2f}")
-    print(f"True Kalman Est ($):  {kalman_trend.iloc[-1]:.2f}")
+    print(f"Latest Price ($): {p_slice.iloc[-1]:.2f}")
+    print(f"True Kalman Est ($): {k_slice.iloc[-1]:.2f}")
+    print(f"Current Signal:   Trend is going {final_trend}")
     print(f"Current Volatility:   {garch_vol.iloc[-1]:.4f}")
