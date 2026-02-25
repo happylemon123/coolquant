@@ -53,16 +53,16 @@ def apply_garch_volatility(returns):
 def create_interactive_dashboard(prices, kalman_trend, garch_vol, ticker="AAPL"):
     """Creates a beautiful, interactive HTML dashboard using Plotly."""
     
-    # Calculate Trend Direction based on the Kalman Derivative
-    trend_diff = kalman_trend.diff()
+    # Calculate Trend Direction based on 5-day sustained momentum to filter out micro-fluctuations
+    trend_diff = kalman_trend.diff(5)
+    trend_diff = trend_diff.bfill() # Handle initial NaNs
     trend_state = np.where(trend_diff > 0, "Uptrend 🟢", "Downtrend 🔴")
     
-    # Identify Reversal Points (where trend changes)
-    # Shift the boolean series to find where current state != previous state
+    # Identify Reversal Points (where sustained trend changes)
     is_uptrend = trend_diff > 0
     reversals = is_uptrend != is_uptrend.shift(1)
-    # Ignore the first few NaN rows
-    reversals.iloc[0:2] = False 
+    # Ignore the first few rows to prevent premature signaling
+    reversals.iloc[0:5] = False 
     
     bullish_reversals = kalman_trend[reversals & is_uptrend]
     bearish_reversals = kalman_trend[reversals & ~is_uptrend]
