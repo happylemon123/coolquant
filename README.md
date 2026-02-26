@@ -36,6 +36,7 @@ Built as a Python package, not a notebook.
 ### 5. Causal Inference (Double ML vs Penalized Bias)
 Predictive accuracy (MSE) is often meaningless if the model relies on correlated noise rather than true structural causality. CoolQuant explicitly demonstrates the mathematical failure of standard ML regularization ($L_1$/Lasso) and how to fix it.
 *   **Module**: `src.model.causal_alpha.py`
+*   **Documentation**: [Read the Industrial Masterclass on Double ML](docs/causal_inference_masterclass.md)
 *   **Function**: Implements **Double Machine Learning** utilizing the Frisch-Waugh-Lovell (FWL) theorem. It proves that while predictive models like Lasso suffer from "Shrinkage Target Bias" (failing to identify the true effect of a trading signal), Double ML isolates pure causal alpha by using Non-Parametric ML specifically as a nuisance parameter filter rather than a direct predictor.
 
 ## Usage
