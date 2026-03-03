@@ -10,7 +10,7 @@ from arch import arch_model
 # Optiver Competition: Kalman + GARCH Model
 # ==========================================
 
-def fetch_market_data(ticker="AAPL", period="1y"):
+def fetch_market_data(ticker="AAPL", period="6mo"):
     """Fetches real market data from Yahoo Finance."""
     data = yf.download(ticker, period=period)
     # yfinance returns a MultiIndex DataFrame if you request a single ticker now.
@@ -122,7 +122,8 @@ def create_interactive_dashboard(prices, kalman_trend, garch_vol, ticker="AAPL")
         height=800,
         hovermode="x unified",
         showlegend=True,
-        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+        xaxis=dict(rangeslider=dict(visible=True))
     )
 
     # Specific axis styling
