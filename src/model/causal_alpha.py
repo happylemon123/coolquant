@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.linear_model import LassoCV, RidgeCV, LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import KFold
+import matplotlib.pyplot as plt
 
 # ==========================================
 # CoolQuant Pillar 5: Causal Inference
@@ -117,3 +118,37 @@ if __name__ == "__main__":
         print("✅ CONCLUSION: Double ML successfully bypasses Regularization Bias.")
     else:
         print("❌ WARNING: Unexpected result.")
+
+    # ---------------------------------------------------------
+    # Generate Educational Visualization
+    # ---------------------------------------------------------
+    print("\n[4] Generating Visualization...")
+    labels = ['Ground Truth\nCausal Effect', 'Lasso Estimate\n(Biased via Penalty)', 'Double ML Estimate\n(FWL Recovered)']
+    values = [true_effect, lasso_effect, dml_effect]
+    colors = ['#2ca02c', '#d62728', '#1f77b4'] # Green, Red, Blue
+
+    plt.figure(figsize=(10, 6))
+    bars = plt.bar(labels, values, color=colors, alpha=0.8)
+    
+    # Add a dashed line for the true effect
+    plt.axhline(y=true_effect, color='black', linestyle='--', linewidth=2, label='True Causal Effect')
+    
+    # Title and Labels
+    plt.title('Causal Inference: The Dangers of Regularization Bias', fontsize=14, fontweight='bold', pad=20)
+    plt.ylabel('Estimated Coefficient Value (Return Impact)', fontsize=12)
+    
+    # Value annotations on bars
+    for bar in bars:
+        yval = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2, yval + 0.05, f"{yval:.3f}", ha='center', va='bottom', fontweight='bold')
+
+    # Add error text boxes
+    plt.text(1, lasso_effect - 0.4, f"Bias Error:\n-{abs(true_effect-lasso_effect):.2f}", 
+             ha='center', color='white', fontweight='bold', bbox=dict(facecolor='red', alpha=0.5))
+    plt.text(2, dml_effect - 0.4, f"Bias Error:\n-{abs(true_effect-dml_effect):.2f}", 
+             ha='center', color='white', fontweight='bold', bbox=dict(facecolor='blue', alpha=0.5))
+
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig('causal_bias_visualization.png', dpi=300)
+    print("✅ Success! Visualization saved as 'causal_bias_visualization.png'")
