@@ -5,6 +5,12 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pykalman import KalmanFilter
 from arch import arch_model
+import sys
+import os
+
+# Add src to path to allow importing local modules
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from src.features.nlp_signals import FinancialSentimentAnalysis
 
 # ==========================================
 # Optiver Competition: Kalman + GARCH Model
@@ -50,7 +56,7 @@ def apply_garch_volatility(returns):
     volatility = res.conditional_volatility / 100
     return pd.Series(volatility, index=returns.index, name='GARCH Volatility')
 
-def create_interactive_dashboard(prices, kalman_trend, garch_vol, ticker="AAPL"):
+def create_interactive_dashboard(prices, kalman_trend, garch_vol, sentiment_score, ticker="AAPL"):
     """Creates a beautiful, interactive HTML dashboard using Plotly."""
     
     # Calculate Trend Direction based on 5-day sustained momentum to filter out micro-fluctuations
@@ -67,11 +73,13 @@ def create_interactive_dashboard(prices, kalman_trend, garch_vol, ticker="AAPL")
     bullish_reversals = kalman_trend[reversals & is_uptrend]
     bearish_reversals = kalman_trend[reversals & ~is_uptrend]
 
-    fig = make_subplots(rows=2, cols=1, 
+    fig = make_subplots(rows=3, cols=1, 
                         shared_xaxes=True, 
-                        vertical_spacing=0.1,
-                        row_heights=[0.7, 0.3],
-                        subplot_titles=(f"{ticker} Price vs Kalman True Trend", "GARCH(1,1) Conditional Volatility"))
+                        vertical_spacing=0.05,
+                        row_heights=[0.5, 0.25, 0.25],
+                        subplot_titles=(f"{ticker} Price vs Kalman True Trend", 
+                                        "GARCH(1,1) Conditional Volatility",
+                                        "FinBERT Real-Time News Sentiment"))
 
     # Top Plot: Prices
     fig.add_trace(go.Scatter(x=prices.index, y=prices, 
@@ -115,20 +123,37 @@ def create_interactive_dashboard(prices, kalman_trend, garch_vol, ticker="AAPL")
                              hovertemplate='Date: %{x}<br>Volatility: %{y:.4f}<extra></extra>'), 
                   row=2, col=1)
 
+    # Third Plot: NLP Sentiment Signal
+    # We plot the single real-time sentiment score as a bar representing the current State
+    # Extend the index by one day or use the last date for the bar
+    last_date = prices.index[-1]
+    sentiment_color = '#00FF00' if sentiment_score > 0 else '#FF0000' if sentiment_score < 0 else '#888888'
+    
+    fig.add_trace(go.Bar(x=[last_date], y=[sentiment_score],
+                         name="FinBERT Sentiment",
+                         marker_color=sentiment_color,
+                         hovertemplate='Date: %{x}<br>Sentiment Score: %{y:+.2f}<extra></extra>'),
+                  row=3, col=1)
+    
+    # Add a horizontal zero line for sentiment
+    fig.add_hline(y=0, line_dash="dash", line_color="white", row=3, col=1)
+
     # Layout Aesthetics
     fig.update_layout(
         title_text=f"CoolQuant: Advanced Market Analytics for {ticker}",
         template="plotly_dark",
-        height=800,
+        height=1000,
         hovermode="x unified",
         showlegend=True,
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
-        xaxis=dict(rangeslider=dict(visible=True))
+        xaxis=dict(rangeslider=dict(visible=False)),
+        xaxis3=dict(rangeslider=dict(visible=True))
     )
 
     # Specific axis styling
     fig.update_yaxes(title_text="Price ($)", row=1, col=1)
     fig.update_yaxes(title_text="Volatility", row=2, col=1)
+    fig.update_yaxes(title_text="NLP Sentiment<br>(-1 to 1)", range=[-1, 1], row=3, col=1)
 
     # Save to HTML
     fig.write_html("interactive_dashboard.html")
@@ -155,8 +180,13 @@ if __name__ == "__main__":
     p_slice = prices.iloc[1:]
     k_slice = kalman_trend.iloc[1:]
     
-    # 4. Visualization
-    create_interactive_dashboard(p_slice, k_slice, garch_vol, ticker)
+    # 4. FinBERT Sentiment
+    print("Initializing FinBERT NLP Pipeline...")
+    nlp_analyzer = FinancialSentimentAnalysis()
+    sentiment_score = nlp_analyzer.get_ticker_sentiment_signal(ticker)
+    
+    # 5. Visualization
+    create_interactive_dashboard(p_slice, k_slice, garch_vol, sentiment_score, ticker)
     
     # Calculate final trend
     final_trend = "UP" if k_slice.iloc[-1] > k_slice.iloc[-2] else "DOWN"
@@ -166,3 +196,4 @@ if __name__ == "__main__":
     print(f"True Kalman Est ($): {k_slice.iloc[-1]:.2f}")
     print(f"Current Signal:   Trend is going {final_trend}")
     print(f"Current Volatility:   {garch_vol.iloc[-1]:.4f}")
+    print(f"Current NLP Sentiment: {sentiment_score:+.4f}")
